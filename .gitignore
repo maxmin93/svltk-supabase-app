@@ -10,3 +10,6 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 /supabase
+
+pnpm-lock.yaml
+package-lock.json

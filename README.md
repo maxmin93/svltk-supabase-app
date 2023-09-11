@@ -396,9 +396,7 @@ pnpx prisma db push
 pnpx vite-node prisma/seed.ts
 ```
 
-## 4. node 배포
-
-도커 개발시 node 가 아닌 vite 를 entrypoint 로 삼아야 함
+## 4. 도커 배포
 
 ### [adapter-node](https://kit.svelte.dev/docs/adapter-node) 오류
 
@@ -420,6 +418,85 @@ $ node -r dotenv/config build
 
 - [`__dirname` is not defined when generating PrismaClient to custom location, w/ SvelteKit](https://github.com/prisma/prisma/issues/15614)
 - [`__dirname` is not defined in ES module scope, Error Only In hooks.server.ts in SvelteKit](https://github.com/prisma/prisma/issues/20702)
+
+### [vite preview 설정](https://vitejs.dev/config/preview-options.html)
+
+node 서버 대신에 vite 를 사용하여 웹앱을 기동시키자.
+
+- 외부 노출용 호스팅 설정
+- port 설정 : 동일 port 가 사용중이면 exit
+  - server (개발용) `pnpm run dev`
+  - preview (빌드용) `pnpm run preview`
+
+```ts
+import { sveltekit } from '@sveltejs/kit/vite';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [sveltekit()],
+  server: {
+    host: true,
+    port: 3000,
+    strictPort: true,
+    watch: {
+      usePolling: true,
+    },
+  },
+  // https://vitejs.dev/config/preview-options.html
+  preview: {
+    port: 8000,
+  },
+});
+```
+
+### 도커 컴포즈 설정
+
+- node 18 + pnpm 패키지 매니저
+- preview 실행
+
+```Dockerfile
+FROM node:18-slim AS base
+
+# because of gyp ERR! Cannot find python
+RUN apt update -y && apt install -y make g++ python3
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+
+COPY . /app
+WORKDIR /app
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm run build
+
+EXPOSE 8000
+CMD [ "pnpm", "run", "preview" ]
+```
+
+```yml
+version: '3'
+
+services:
+  vite_docker:
+    # docker build -t svltk-supabase-app --no-cache .
+    build: .
+    container_name: vite_docker
+    ports:
+      - 8000:8000
+    networks:
+      - webappnetwork
+
+networks:
+  webappnetwork:
+    driver: bridge
+```
+
+```console
+$ docker compose up --build -d
+$ docker compose down -v
+```
 
 ## 9. 참고문서
 

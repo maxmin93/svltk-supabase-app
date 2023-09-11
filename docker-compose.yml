@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  vite_docker:
+    # docker build -t svltk-supabase-app --no-cache .
+    build: .
+    container_name: vite_docker
+    ports:
+      - 8000:8000
+    networks:
+      - webappnetwork
+
+networks:
+  webappnetwork:
+    driver: bridge
